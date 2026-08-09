@@ -1,0 +1,114 @@
+version: '3.8'
+
+services:
+  # 1. MySQL 8.0 Persistence
+  mysql:
+    image: mysql:8.0
+    container_name: spaceweather-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${DB_NAME:-spaceweather_db}
+      MYSQL_USER: ${DB_USER:-spaceweather}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-spaceweather123}
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/migrations/V1__initial_schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ./database/seed/V2__seed_data.sql:/docker-entrypoint-initdb.d/02_seed.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-root}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - spaceweather-net
+
+  # 2. Ollama Local LLM Runtime (Llama 3.1:8B)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: spaceweather-ollama
+    restart: unless-stopped
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - spaceweather-net
+
+  # 3. Main Backend Service (Pure Java)
+  main-backend:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/main-backend.Dockerfile
+    container_name: spaceweather-main-backend
+    restart: unless-stopped
+    environment:
+      PORT: 8081
+      WS_PORT: 8085
+      DB_URL: jdbc:mysql://mysql:3306/${DB_NAME:-spaceweather_db}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USER: ${DB_USER:-spaceweather}
+      DB_PASSWORD: ${DB_PASSWORD:-spaceweather123}
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1:8b}
+      DETERMINISTIC_FALLBACK: ${DETERMINISTIC_FALLBACK:-true}
+      SIMULATION_SERVICE_URL: http://simulation-service:8082
+    ports:
+      - "8081:8081"
+      - "8085:8085"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - spaceweather-net
+
+  # 4. Simulation Service (Pure Java)
+  simulation-service:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/simulation.Dockerfile
+    container_name: spaceweather-simulation-service
+    restart: unless-stopped
+    environment:
+      SIMULATION_PORT: 8082
+      MAIN_BACKEND_URL: http://main-backend:8081
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1:8b}
+      SIMULATION_WORKER_COUNT: ${SIMULATION_WORKER_COUNT:-2}
+      SIMULATION_INTERVAL: ${SIMULATION_INTERVAL:-15}
+      SIMULATION_FALLBACK: ${SIMULATION_FALLBACK:-true}
+    ports:
+      - "8082:8082"
+    depends_on:
+      - main-backend
+    networks:
+      - spaceweather-net
+
+  # 5. API Gateway (Pure Java)
+  api-gateway:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/gateway.Dockerfile
+    container_name: spaceweather-api-gateway
+    restart: unless-stopped
+    environment:
+      GATEWAY_PORT: 8080
+      MAIN_BACKEND_URL: http://main-backend:8081
+      SIMULATION_SERVICE_URL: http://simulation-service:8082
+      WS_TARGET_URL: ws://main-backend:8085
+    ports:
+      - "${GATEWAY_PORT:-8080}:8080"
+    depends_on:
+      - main-backend
+      - simulation-service
+    networks:
+      - spaceweather-net
+
+volumes:
+  mysql_data:
+  ollama_data:
+
+networks:
+  spaceweather-net:
+    driver: bridge

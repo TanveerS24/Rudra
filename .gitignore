@@ -1,0 +1,76 @@
+# ==============================================================================
+# Git Ignore Configuration
+# Integrated Space Weather Monitoring and Satellite Operations Decision Support System
+# ==============================================================================
+
+# 1. Environment & Secrets (Keep .env.example tracked)
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.cert
+
+# 2. Local Portable Tools
+.tools/
+
+# 3. Java & Maven Build Artifacts
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+dependency-reduced-pom.xml
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# 4. Node & Frontend Build Artifacts
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/.pnp
+frontend/.pnp.js
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# 5. IDEs & Editors
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.code-workspace
+.settings/
+.project
+.classpath
+.factorypath
+*.sublime-project
+*.sublime-workspace
+.history/
+
+# 6. Operating System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# 7. Persistent Data Directories & Runtime Logs
+data/
+logs/
+mysql_data/
+ollama_data/
+.system_generated/
+*.tmp
+*.bak
