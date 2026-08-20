@@ -18,7 +18,7 @@ export const SatelliteFleetPanel: React.FC<FleetPanelProps> = ({
   const filtered = satellites.filter((s) => filterOrbit === 'ALL' || s.orbitType === filterOrbit);
 
   return (
-    <div className="hud-panel p-4 rounded-lg flex flex-col space-y-3 h-full">
+    <div className="hud-panel p-4 rounded-lg flex flex-col space-y-3">
       {/* Header & Filter Controls */}
       <div className="flex items-center justify-between border-b border-blue-900/40 pb-2">
         <div className="flex items-center space-x-2 text-hud-cyan">
@@ -43,7 +43,7 @@ export const SatelliteFleetPanel: React.FC<FleetPanelProps> = ({
       </div>
 
       {/* Satellite Fleet Cards List */}
-      <div className="space-y-2 overflow-y-auto max-h-[340px] pr-1">
+      <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
         {filtered.map((sat) => {
           const isSelected = selectedSatelliteId === sat.satelliteId;
           const isSafeMode = sat.operationalStatus === 'SAFE_MODE' || sat.healthStatus === 'DEGRADED';

@@ -1,36 +1,52 @@
 import React from 'react';
-import { Target, CheckCircle, Clock, ShieldCheck, ArrowRight } from 'lucide-react';
+import { Target, CheckCircle, Clock, ShieldCheck, ArrowRight, CheckCheck } from 'lucide-react';
 import { Recommendation } from '../types';
 
 interface DecisionPanelProps {
   recommendations: Recommendation[];
   onExecuteAction?: (recommendationId: string) => void;
+  onExecuteAll?: () => void;
 }
 
 export const DecisionSupportPanel: React.FC<DecisionPanelProps> = ({
   recommendations,
   onExecuteAction,
+  onExecuteAll,
 }) => {
   const pending = recommendations.filter((r) => r.status === 'PENDING');
-  const displayList = pending.length > 0 ? pending : recommendations.slice(0, 3);
+  // Limit to top 10 most critical / recent pending directives to keep DOM lightweight and focused
+  const displayList = pending.length > 0 ? pending.slice(0, 10) : recommendations.slice(0, 3);
 
   return (
     <div className="hud-panel p-4 rounded-lg flex flex-col space-y-3">
-      {/* Header */}
+      {/* Header with Execute All Action */}
       <div className="flex items-center justify-between border-b border-blue-900/40 pb-2">
         <div className="flex items-center space-x-2 text-hud-emerald">
           <Target className="w-4 h-4" />
           <h2 className="text-xs font-bold font-mono tracking-wider uppercase">
-            Operational Decision Directives ({displayList.length})
+            Operational Directives ({pending.length > 0 ? pending.length.toLocaleString() : '0'})
           </h2>
         </div>
-        <span className="text-[10px] font-mono text-slate-400">
-          AI/RAG REASONING MATRIX
-        </span>
+
+        {pending.length > 0 ? (
+          <button
+            type="button"
+            onClick={onExecuteAll}
+            className="flex items-center space-x-1 px-2.5 py-1 rounded bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/60 text-emerald-300 text-[10px] font-mono font-bold transition-all shadow-glow-emerald"
+            title="Execute and approve all pending operational recommendations"
+          >
+            <CheckCheck className="w-3 h-3" />
+            <span>EXECUTE ALL</span>
+          </button>
+        ) : (
+          <span className="text-[10px] font-mono text-slate-400">
+            ALL EXECUTED
+          </span>
+        )}
       </div>
 
       {/* Recommendations Cards List */}
-      <div className="space-y-3 overflow-y-auto max-h-[320px] pr-1">
+      <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
         {displayList.length === 0 ? (
           <div className="text-center py-6 text-xs text-slate-400 font-mono">
             No pending operational directives. All constellations nominal.

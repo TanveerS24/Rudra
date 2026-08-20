@@ -26,7 +26,7 @@ public class OllamaLLMClient implements LLMClient {
         this.config = config;
         this.fallbackGenerator = new DeterministicScenarioGenerator();
         this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(3))
+                .connectTimeout(Duration.ofSeconds(10))
                 .build();
     }
 
@@ -92,7 +92,7 @@ public class OllamaLLMClient implements LLMClient {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(config.getOllamaUrl() + "/api/generate"))
                 .header("Content-Type", "application/json")
-                .timeout(Duration.ofSeconds(8))
+                .timeout(Duration.ofSeconds(60))
                 .POST(HttpRequest.BodyPublishers.ofString(JsonUtils.toJson(reqBody)))
                 .build();
 

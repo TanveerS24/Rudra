@@ -54,10 +54,13 @@ public class SimulatorController implements HttpHandler {
                 HttpUtils.sendJsonResponse(exchange, 200, toConfigDTO(cfg));
             } else if (path.endsWith("/config") && "PUT".equals(method)) {
                 Map<?, ?> body = HttpUtils.readJsonBody(exchange, Map.class);
-                int interval = body.get("intervalSeconds") instanceof Number n ? n.intValue() : 15;
-                int workers = body.get("workerCount") instanceof Number n ? n.intValue() : 2;
+                SimulationConfig current = engine.getCurrentConfig();
+                int interval = body.get("intervalSeconds") instanceof Number n ? n.intValue() : current.getIntervalSeconds();
+                int workers = body.get("workerCount") instanceof Number n ? n.intValue() : current.getWorkerCount();
                 String mode = (String) body.get("mode");
+                if (mode == null || mode.isBlank()) mode = current.getMode();
                 String intensity = (String) body.get("defaultIntensity");
+                if (intensity == null || intensity.isBlank()) intensity = current.getDefaultIntensity();
 
                 engine.updateConfig(interval, workers, mode, intensity);
                 HttpUtils.sendJsonResponse(exchange, 200, toConfigDTO(engine.getCurrentConfig()));

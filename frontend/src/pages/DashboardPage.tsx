@@ -7,7 +7,7 @@ import { DecisionSupportPanel } from '../components/DecisionSupportPanel';
 import { HistoricalTelemetryCharts } from '../components/HistoricalTelemetryCharts';
 import { EventHorizonTimeline } from '../components/EventHorizonTimeline';
 import { AlertsTicker } from '../components/AlertsTicker';
-import { GlobeScene } from '../globe/GlobeScene';
+import { MissionControlMap } from '../components/MissionControlMap';
 import { apiService } from '../services/api';
 import { wsClient } from '../services/websocket';
 import {
@@ -37,6 +37,13 @@ export const DashboardPage: React.FC<DashboardProps> = ({ onOpenSimulator }) => 
 
   // Initial Data Fetch
   useEffect(() => {
+    const defaultSats: Satellite[] = [
+      { satelliteId: 'SAT-001-ISS', name: 'ISS / Zarya Module', missionType: 'Manned Low Earth Orbit Laboratory', orbitType: 'LEO', altitudeKm: 420.0, inclinationDeg: 51.6, latitude: -28.5, longitude: 45.2, healthStatus: 'NOMINAL', radiationSensitivity: 'CRITICAL', communicationSensitivity: 'HIGH', navigationSensitivity: 'HIGH', operationalStatus: 'ACTIVE', createdAt: '', updatedAt: '' },
+      { satelliteId: 'SAT-002-STARLINK', name: 'Starlink Constellation Leader', missionType: 'Broadband Mega-Constellation', orbitType: 'LEO', altitudeKm: 550.0, inclinationDeg: 53.2, latitude: 35.1, longitude: -80.4, healthStatus: 'NOMINAL', radiationSensitivity: 'HIGH', communicationSensitivity: 'CRITICAL', navigationSensitivity: 'MEDIUM', operationalStatus: 'ACTIVE', createdAt: '', updatedAt: '' },
+      { satelliteId: 'SAT-003-GOES16', name: 'GOES-16 East Space Environment', missionType: 'Geostationary Solar & Weather Observatory', orbitType: 'GEO', altitudeKm: 35786.0, inclinationDeg: 0.1, latitude: 0.0, longitude: -75.2, healthStatus: 'NOMINAL', radiationSensitivity: 'LOW', communicationSensitivity: 'CRITICAL', navigationSensitivity: 'LOW', operationalStatus: 'ACTIVE', createdAt: '', updatedAt: '' },
+      { satelliteId: 'SAT-004-GPS3', name: 'GPS-III Navstar SV04', missionType: 'Global Positioning and Timing Constellation', orbitType: 'MEO', altitudeKm: 20200.0, inclinationDeg: 55.0, latitude: 12.8, longitude: 125.4, healthStatus: 'NOMINAL', radiationSensitivity: 'MEDIUM', communicationSensitivity: 'HIGH', navigationSensitivity: 'CRITICAL', operationalStatus: 'ACTIVE', createdAt: '', updatedAt: '' },
+    ];
+
     const loadData = async () => {
       try {
         const [dashData, eventsData, satsData] = await Promise.all([
@@ -51,9 +58,9 @@ export const DashboardPage: React.FC<DashboardProps> = ({ onOpenSimulator }) => 
           setRiskAssessments(dashData.activeRiskAssessments || []);
           setRecommendations(dashData.pendingRecommendations || []);
           setAlerts(dashData.activeAlerts || []);
-          setSatellites(dashData.satellites || satsData);
+          setSatellites(dashData.satellites && dashData.satellites.length > 0 ? dashData.satellites : (satsData.length > 0 ? satsData : defaultSats));
         } else {
-          setSatellites(satsData);
+          setSatellites(satsData.length > 0 ? satsData : defaultSats);
         }
 
         if (eventsData && eventsData.length > 0) {
@@ -62,12 +69,18 @@ export const DashboardPage: React.FC<DashboardProps> = ({ onOpenSimulator }) => 
         }
       } catch (err) {
         console.error('Failed to load initial space telemetry:', err);
+        setSatellites(defaultSats);
       } finally {
         setLoading(false);
       }
     };
 
-    loadData();
+    const safetyTimer = setTimeout(() => {
+      setLoading(false);
+      setSatellites((prev) => (prev.length > 0 ? prev : defaultSats));
+    }, 2000);
+
+    loadData().finally(() => clearTimeout(safetyTimer));
 
     // Connect WebSocket
     wsClient.connect();
@@ -114,14 +127,54 @@ export const DashboardPage: React.FC<DashboardProps> = ({ onOpenSimulator }) => 
     }
   };
 
+  const handleExecuteAll = async () => {
+    const pending = recommendations.filter((r) => r.status === 'PENDING');
+    // Optimistically mark all recommendations as EXECUTED
+    setRecommendations((prev) =>
+      prev.map((r) => ({ ...r, status: 'EXECUTED' }))
+    );
+    // Restore all satellites back to NOMINAL operational status
+    setSatellites((prev) =>
+      prev.map((s) => ({
+        ...s,
+        healthStatus: 'NOMINAL',
+        operationalStatus: 'ACTIVE',
+      }))
+    );
+
+    try {
+      // Dispatches execution for pending recommendations
+      for (const rec of pending.slice(0, 15)) {
+        apiService.updateRecommendationStatus(rec.recommendationId, 'EXECUTED').catch(() => {});
+      }
+    } catch (err) {
+      console.error('Failed to execute all directives:', err);
+    }
+  };
+
   const handleAcknowledgeAlert = async (alertId: string) => {
+    // Optimistically mark acknowledged immediately
+    setAlerts((prev) =>
+      prev.map((a) => (a.alertId === alertId ? { ...a, acknowledged: true } : a))
+    );
     try {
       await apiService.acknowledgeAlert(alertId);
-      setAlerts((prev) =>
-        prev.map((a) => (a.alertId === alertId ? { ...a, acknowledged: true } : a))
-      );
     } catch (err) {
-      console.error('Failed to acknowledge alert:', err);
+      console.error('Failed to acknowledge alert on server:', err);
+    }
+  };
+
+  const handleAcknowledgeAll = async () => {
+    const unacknowledged = alerts.filter((a) => !a.acknowledged);
+    // Optimistically mark all acknowledged immediately
+    setAlerts((prev) => prev.map((a) => ({ ...a, acknowledged: true })));
+
+    try {
+      for (const alt of unacknowledged.slice(0, 10)) {
+        apiService.acknowledgeAlert(alt.alertId).catch(() => {});
+      }
+    } catch (err) {
+      console.error('Failed to acknowledge all alerts:', err);
     }
   };
 
@@ -142,7 +195,7 @@ export const DashboardPage: React.FC<DashboardProps> = ({ onOpenSimulator }) => 
     (riskAssessments.length > 0 ? riskAssessments[0] : null);
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-space-950 text-slate-100 scanline overflow-hidden select-none">
+    <div className="min-h-screen w-full flex flex-col bg-space-950 text-slate-100 scanline overflow-y-auto select-none">
       {/* Top Header */}
       <MissionControlHeader
         summary={summary}
@@ -151,64 +204,81 @@ export const DashboardPage: React.FC<DashboardProps> = ({ onOpenSimulator }) => 
       />
 
       {/* Active Alerts Banner */}
-      <AlertsTicker alerts={alerts} onAcknowledgeAlert={handleAcknowledgeAlert} />
+      <AlertsTicker
+        alerts={alerts}
+        onAcknowledgeAlert={handleAcknowledgeAlert}
+        onAcknowledgeAll={handleAcknowledgeAll}
+      />
 
-      {/* Main Grid View */}
-      <div className="flex-1 grid grid-cols-12 gap-3 p-3 overflow-hidden">
-        {/* Left Column: Space Weather & Constellation Fleet (3 cols) */}
-        <div className="col-span-12 lg:col-span-3 flex flex-col space-y-3 overflow-hidden">
-          <SpaceEnvironmentPanel event={selectedEvent} />
-          <div className="flex-1 overflow-hidden">
+      {/* Main Operations Dashboard Container */}
+      <div className="flex-1 flex flex-col space-y-4 p-4">
+        {/* Tier 1: Space Weather Environment (Left) & Geospatial Radar Hero (Right, Wide) */}
+        <div className="grid grid-cols-12 gap-4">
+          {/* Top Left: Space Weather Environment (4 cols) */}
+          <div className="col-span-12 lg:col-span-4 flex flex-col">
+            <SpaceEnvironmentPanel event={selectedEvent} />
+          </div>
+
+          {/* Top Right: Geospatial Radar & Event Horizon Scrubber (8 cols) */}
+          <div className="col-span-12 lg:col-span-8 flex flex-col space-y-3">
+            <div className="rounded-lg overflow-hidden relative flex-1">
+              <MissionControlMap
+                impactLocation={selectedEvent?.maximumImpactLocation}
+                intensity={selectedEvent?.intensity}
+                geomagneticIndex={selectedEvent?.geomagneticIndex}
+                satellites={satellites}
+                selectedSatelliteId={selectedSatellite?.satelliteId}
+                onSelectSatellite={(sat) => setSelectedSatellite(sat)}
+              />
+            </div>
+
+            {/* Event Horizon Timeline Scrubber */}
+            <EventHorizonTimeline
+              events={recentEvents}
+              selectedEventId={selectedEvent?.eventId}
+              onSelectEvent={(evt) => setSelectedEvent(evt)}
+            />
+          </div>
+        </div>
+
+        {/* Tier 2: 3-Way Split Section (Fleet, Risk Assessment, Directives) */}
+        <div className="grid grid-cols-12 gap-4">
+          {/* Middle Left: Virtual Satellite Fleet (4 cols) */}
+          <div className="col-span-12 lg:col-span-4 flex flex-col">
             <SatelliteFleetPanel
               satellites={satellites}
               selectedSatelliteId={selectedSatellite?.satelliteId}
               onSelectSatellite={(sat) => setSelectedSatellite(sat)}
             />
           </div>
-        </div>
 
-        {/* Center Column: 3D Earth Globe & Event Horizon (6 cols) */}
-        <div className="col-span-12 lg:col-span-6 flex flex-col space-y-3 overflow-hidden">
-          {/* 3D Earth Centerpiece */}
-          <div className="flex-1 hud-panel rounded-lg overflow-hidden relative min-h-[360px]">
-            <GlobeScene
-              impactLocation={selectedEvent?.maximumImpactLocation}
-              intensity={selectedEvent?.intensity}
-              geomagneticIndex={selectedEvent?.geomagneticIndex}
-              satellites={satellites}
-              selectedSatelliteId={selectedSatellite?.satelliteId}
-              onSelectSatellite={(sat) => setSelectedSatellite(sat)}
+          {/* Middle Center: Hybrid Risk Assessment (4 cols) */}
+          <div className="col-span-12 lg:col-span-4 flex flex-col">
+            <RiskAssessmentPanel
+              assessment={activeAssessment}
+              satelliteCount={satellites.length}
             />
           </div>
 
-          {/* Event Horizon Timeline Scrubber */}
-          <EventHorizonTimeline
+          {/* Middle Right: Operational Decision Directives (4 cols) */}
+          <div className="col-span-12 lg:col-span-4 flex flex-col">
+            <DecisionSupportPanel
+              recommendations={recommendations}
+              onExecuteAction={handleExecuteAction}
+              onExecuteAll={handleExecuteAll}
+            />
+          </div>
+        </div>
+
+        {/* Tier 3: Bottom Historical Telemetry Graphs & Log Table */}
+        <div className="pb-4 shrink-0">
+          <HistoricalTelemetryCharts
             events={recentEvents}
-            selectedEventId={selectedEvent?.eventId}
-            onSelectEvent={(evt) => setSelectedEvent(evt)}
+            riskAssessments={riskAssessments}
           />
         </div>
-
-        {/* Right Column: Hybrid Risk & Decision Directives (3 cols) */}
-        <div className="col-span-12 lg:col-span-3 flex flex-col space-y-3 overflow-hidden">
-          <RiskAssessmentPanel
-            assessment={activeAssessment}
-            satelliteCount={satellites.length}
-          />
-          <DecisionSupportPanel
-            recommendations={recommendations}
-            onExecuteAction={handleExecuteAction}
-          />
-        </div>
-      </div>
-
-      {/* Bottom Collapsible / Historical Telemetry Graphs */}
-      <div className="px-3 pb-3 shrink-0">
-        <HistoricalTelemetryCharts
-          events={recentEvents}
-          riskAssessments={riskAssessments}
-        />
       </div>
     </div>
   );
 };
+

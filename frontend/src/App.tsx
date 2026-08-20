@@ -6,7 +6,7 @@ export const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<'DASHBOARD' | 'SIMULATOR'>('DASHBOARD');
 
   return (
-    <div className="w-screen h-screen bg-space-950 text-slate-100">
+    <div className="w-full min-h-screen bg-space-950 text-slate-100 overflow-x-hidden">
       {currentPage === 'DASHBOARD' ? (
         <DashboardPage onOpenSimulator={() => setCurrentPage('SIMULATOR')} />
       ) : (

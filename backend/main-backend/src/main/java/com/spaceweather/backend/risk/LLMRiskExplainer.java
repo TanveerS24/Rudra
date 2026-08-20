@@ -24,7 +24,7 @@ public class LLMRiskExplainer {
     public LLMRiskExplainer(AppConfig config) {
         this.config = config;
         this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(3))
+                .connectTimeout(Duration.ofSeconds(10))
                 .build();
     }
 
@@ -79,7 +79,7 @@ public class LLMRiskExplainer {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(config.getOllamaUrl() + "/api/generate"))
                 .header("Content-Type", "application/json")
-                .timeout(Duration.ofSeconds(6))
+                .timeout(Duration.ofSeconds(60))
                 .POST(HttpRequest.BodyPublishers.ofString(JsonUtils.toJson(reqBody)))
                 .build();
 

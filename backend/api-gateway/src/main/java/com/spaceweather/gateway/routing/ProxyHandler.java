@@ -68,7 +68,7 @@ public class ProxyHandler implements HttpHandler {
                     .uri(URI.create(targetUrl))
                     .header("X-Request-ID", CorrelationContext.getRequestId())
                     .header("X-Correlation-ID", CorrelationContext.getCorrelationId())
-                    .timeout(Duration.ofSeconds(8));
+                    .timeout(Duration.ofSeconds(120));
 
             // Copy Content-Type if present
             String contentType = exchange.getRequestHeaders().getFirst("Content-Type");

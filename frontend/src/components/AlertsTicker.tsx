@@ -1,15 +1,17 @@
 import React from 'react';
-import { AlertTriangle, Check, BellRing } from 'lucide-react';
+import { AlertTriangle, Check, BellRing, CheckCheck } from 'lucide-react';
 import { Alert } from '../types';
 
 interface AlertsTickerProps {
   alerts: Alert[];
   onAcknowledgeAlert?: (alertId: string) => void;
+  onAcknowledgeAll?: () => void;
 }
 
 export const AlertsTicker: React.FC<AlertsTickerProps> = ({
   alerts,
   onAcknowledgeAlert,
+  onAcknowledgeAll,
 }) => {
   const active = alerts.filter((a) => !a.acknowledged);
   if (active.length === 0) return null;
@@ -19,23 +21,55 @@ export const AlertsTicker: React.FC<AlertsTickerProps> = ({
 
   return (
     <div
-      className={`px-4 py-2 flex items-center justify-between border-b text-xs font-mono select-none ${isCritical ? 'bg-red-950/80 border-red-500/60 text-red-200 animate-pulse' : 'bg-amber-950/80 border-amber-500/60 text-amber-200'}`}
+      className={`px-4 py-2 flex items-center justify-between border-b text-xs font-mono select-none transition-all duration-200 ${
+        isCritical
+          ? 'bg-red-950/90 border-red-500/70 text-red-200 shadow-glow-red'
+          : 'bg-amber-950/90 border-amber-500/70 text-amber-200 shadow-glow-amber'
+      }`}
     >
-      <div className="flex items-center space-x-3">
-        <BellRing className="w-4 h-4 text-hud-red shrink-0" />
-        <div>
-          <strong className="tracking-wide">[{topAlert.severity} ALERT] {topAlert.title}:</strong>{' '}
-          <span className="text-slate-300 font-sans">{topAlert.message}</span>
+      <div className="flex items-center space-x-3 overflow-hidden">
+        <BellRing className={`w-4 h-4 shrink-0 ${isCritical ? 'text-red-400 animate-pulse' : 'text-amber-400'}`} />
+        <div className="truncate">
+          <strong className="tracking-wide text-white">
+            [{topAlert.severity} ALERT {active.length > 1 ? `(1 of ${active.length})` : ''}] {topAlert.title}:
+          </strong>{' '}
+          <span className="text-slate-200 font-sans">{topAlert.message}</span>
         </div>
       </div>
 
-      <button
-        onClick={() => onAcknowledgeAlert?.(topAlert.alertId)}
-        className="flex items-center space-x-1 px-2.5 py-1 rounded bg-red-900/50 hover:bg-red-900/80 border border-red-500/60 text-red-200 text-[10px] font-bold transition-colors"
-      >
-        <Check className="w-3 h-3" />
-        <span>ACKNOWLEDGE</span>
-      </button>
+      <div className="flex items-center space-x-2 shrink-0 ml-3">
+        {active.length > 1 && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAcknowledgeAll?.();
+            }}
+            className="flex items-center space-x-1 px-3 py-1 rounded text-[11px] font-bold font-mono transition-all cursor-pointer bg-red-700/80 hover:bg-red-600 text-white border border-red-400 shadow-md"
+            title="Acknowledge and dismiss all active alerts"
+          >
+            <CheckCheck className="w-3.5 h-3.5" />
+            <span>ACKNOWLEDGE ALL ({active.length})</span>
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onAcknowledgeAlert?.(topAlert.alertId);
+          }}
+          className={`flex items-center space-x-1 px-3 py-1 rounded text-[11px] font-bold font-mono transition-all cursor-pointer ${
+            isCritical
+              ? 'bg-red-600 hover:bg-red-500 text-white shadow-md'
+              : 'bg-amber-600 hover:bg-amber-500 text-space-950 shadow-md'
+          }`}
+        >
+          <Check className="w-3.5 h-3.5" />
+          <span>ACKNOWLEDGE</span>
+        </button>
+      </div>
     </div>
   );
 };
+

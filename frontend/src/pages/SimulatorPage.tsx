@@ -64,23 +64,43 @@ export const SimulatorPage: React.FC<SimulatorProps> = ({ onBackToDashboard }) =
   }, []);
 
   const handleStart = async () => {
-    await apiService.startSimulation();
-    setConfig((prev) => ({ ...prev, isActive: true }));
+    try {
+      setConfig((prev) => ({ ...prev, isActive: true }));
+      await apiService.startSimulation();
+      await refreshData();
+    } catch (err) {
+      console.error('Failed to start simulation:', err);
+    }
   };
 
   const handlePause = async () => {
-    await apiService.pauseSimulation();
-    setConfig((prev) => ({ ...prev, isActive: false }));
+    try {
+      setConfig((prev) => ({ ...prev, isActive: false }));
+      await apiService.pauseSimulation();
+      await refreshData();
+    } catch (err) {
+      console.error('Failed to pause simulation:', err);
+    }
   };
 
   const handleReset = async () => {
-    await apiService.resetSimulation();
-    setConfig((prev) => ({ ...prev, isActive: false }));
+    try {
+      setConfig((prev) => ({ ...prev, isActive: false }));
+      await apiService.resetSimulation();
+      await refreshData();
+    } catch (err) {
+      console.error('Failed to reset simulation:', err);
+    }
   };
 
   const handleUpdateConfig = async (newCfg: Partial<SimulationConfig>) => {
-    const updated = await apiService.updateSimulationConfig(newCfg);
-    setConfig(updated);
+    try {
+      setConfig((prev) => ({ ...prev, ...newCfg }));
+      const updated = await apiService.updateSimulationConfig(newCfg);
+      if (updated) setConfig(updated);
+    } catch (err) {
+      console.error('Failed to update config:', err);
+    }
   };
 
   const handleTriggerManual = async (intensity: string) => {

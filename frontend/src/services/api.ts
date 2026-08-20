@@ -20,21 +20,29 @@ async function fetchJson<T>(endpoint: string, options?: RequestInit): Promise<T>
     ...(options?.headers || {}),
   };
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 6000);
 
-  if (!response.ok) {
-    let errorMsg = `API Error (${response.status}): ${response.statusText}`;
-    try {
-      const errJson = await response.json();
-      if (errJson.message) errorMsg = errJson.message;
-    } catch (_) {}
-    throw new Error(errorMsg);
+  try {
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers,
+      signal: options?.signal || controller.signal,
+    });
+
+    if (!response.ok) {
+      let errorMsg = `API Error (${response.status}): ${response.statusText}`;
+      try {
+        const errJson = await response.json();
+        if (errJson.message) errorMsg = errJson.message;
+      } catch (_) {}
+      throw new Error(errorMsg);
+    }
+
+    return await response.json();
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  return response.json();
 }
 
 export const apiService = {

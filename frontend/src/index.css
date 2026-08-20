@@ -75,11 +75,15 @@
   background: rgba(0, 240, 255, 0.8);
 }
 
-/* Pulsing radar grid background */
-.radar-grid {
-  background-image: 
-    radial-gradient(circle, rgba(0, 240, 255, 0.08) 1px, transparent 1px),
-    linear-gradient(to right, rgba(59, 130, 246, 0.03) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(59, 130, 246, 0.03) 1px, transparent 1px);
-  background-size: 24px 24px, 48px 48px, 48px 48px;
+/* MapLibre Attribution Styling */
+.maplibregl-ctrl-attrib {
+  font-size: 9px !important;
+  background: rgba(2, 6, 23, 0.75) !important;
+  color: #64748b !important;
+  border-radius: 4px !important;
+  padding: 1px 4px !important;
+}
+.maplibregl-ctrl-attrib a {
+  color: #38bdf8 !important;
+  text-decoration: none !important;
 }

@@ -29,7 +29,7 @@ export const SpaceEnvironmentPanel: React.FC<EnvironmentPanelProps> = ({ event }
     'text-cyan-400 border-cyan-500/50 bg-cyan-950/30';
 
   return (
-    <div className="hud-panel p-4 rounded-lg flex flex-col space-y-4">
+    <div className="hud-panel p-4 rounded-lg flex flex-col justify-between h-full space-y-4 min-h-[460px]">
       {/* Panel Header */}
       <div className="flex items-center justify-between border-b border-blue-900/40 pb-2">
         <div className="flex items-center space-x-2 text-hud-cyan">
